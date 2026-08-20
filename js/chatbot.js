@@ -1,0 +1,1 @@
+function initChatbot(){const b=document.getElementById('chatbot-launcher');if(!b)return;b.onclick=()=>{const q=prompt('RailBot: Ask about booking, wallet, reports or cancellation.');if(q)alert('RailBot demo: Please use Search & Book, My Bookings, E-Wallet or Report Issue for that action.');};}
