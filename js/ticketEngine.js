@@ -1,0 +1,4 @@
+function createBookingReference(){return'TRN-'+Math.random().toString(36).slice(2,8).toUpperCase();}
+function formatNaira(value){return'₦'+Number(value||0).toLocaleString('en-NG');}
+function getBookingStatusLabel(status){const map={Confirmed:'Confirmed',Completed:'Completed',Cancelled:'Cancelled',Pending:'Pending'};return map[status]||status||'Pending';}
+function advanceBookingStatuses(){const bookings=getBookings();const now=Date.now();let changed=false;bookings.forEach(b=>{if(b.status==='Confirmed'&&b.departureDateTime&&new Date(b.departureDateTime).getTime()<now){b.status='Completed';b.statusHistory=Array.isArray(b.statusHistory)?b.statusHistory:[];b.statusHistory.push({status:'Completed',at:new Date().toISOString(),by:'System'});changed=true;}});if(changed)localStorage.setItem(STORAGE_KEYS.BOOKINGS,JSON.stringify(bookings));return bookings;}
