@@ -1,0 +1,1 @@
+function initLiveTrackerUI(){const el=document.getElementById('live-tracker-view');if(el)el.innerHTML='<div class="search-card"><h3>Live Train Tracker</h3><p>Demo tracker placeholder. Live tracking can be connected to a backend/API later.</p></div>';}
