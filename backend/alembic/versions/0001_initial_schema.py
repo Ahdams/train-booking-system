@@ -55,9 +55,15 @@ def upgrade() -> None:
         sa.Column("departure_time", sa.Time(), nullable=False),
         sa.Column("arrival_time", sa.Time(), nullable=False),
         sa.Column("operating_days", sa.String(30), nullable=False),
-        sa.Column("status", sa.String(30), nullable=False),
+        sa.Column("status", sa.String(30), nullable=False, server_default="active"),
     )
     op.create_index("ix_schedules_train_id", "schedules", ["train_id"])
+    op.create_index(
+        "uq_schedule_route_time",
+        "schedules",
+        ["train_id", "origin_station_id", "destination_station_id", "departure_time"],
+        unique=True,
+    )
 
     op.create_table(
         "bookings",
@@ -68,18 +74,36 @@ def upgrade() -> None:
         sa.Column("travel_date", sa.Date(), nullable=False),
         sa.Column("seat_number", sa.String(20), nullable=False),
         sa.Column("amount", sa.Numeric(12, 2), nullable=False),
-        sa.Column("status", sa.String(30), nullable=False),
+        sa.Column("status", sa.String(30), nullable=False, server_default="confirmed"),
         sa.Column("created_at", sa.DateTime(), nullable=False),
     )
     op.create_index("ix_bookings_booking_reference", "bookings", ["booking_reference"], unique=True)
     op.create_index("ix_bookings_user_id", "bookings", ["user_id"])
     op.create_index("ix_bookings_travel_date", "bookings", ["travel_date"])
+    # Prevent two passengers from holding the same seat on the same train service/date.
+    op.create_index(
+        "uq_booking_seat_per_service_date",
+        "bookings",
+        ["schedule_id", "travel_date", "seat_number"],
+        unique=True,
+    )
+
+    op.create_table(
+        "booking_status_history",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("booking_id", sa.Integer(), sa.ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("status", sa.String(30), nullable=False),
+        sa.Column("changed_by_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column("note", sa.String(255)),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+    )
+    op.create_index("ix_booking_status_history_booking_id", "booking_status_history", ["booking_id"])
 
     op.create_table(
         "wallets",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("balance", sa.Numeric(12, 2), nullable=False),
+        sa.Column("balance", sa.Numeric(12, 2), nullable=False, server_default="0"),
         sa.Column("created_at", sa.DateTime(), nullable=False),
     )
     op.create_index("ix_wallets_user_id", "wallets", ["user_id"], unique=True)
@@ -88,6 +112,7 @@ def upgrade() -> None:
         "wallet_transactions",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("wallet_id", sa.Integer(), sa.ForeignKey("wallets.id"), nullable=False),
+        sa.Column("booking_id", sa.Integer(), sa.ForeignKey("bookings.id"), nullable=True),
         sa.Column("transaction_type", sa.String(30), nullable=False),
         sa.Column("amount", sa.Numeric(12, 2), nullable=False),
         sa.Column("reference", sa.String(80), nullable=False),
@@ -96,26 +121,29 @@ def upgrade() -> None:
     )
     op.create_index("ix_wallet_transactions_wallet_id", "wallet_transactions", ["wallet_id"])
     op.create_index("ix_wallet_transactions_reference", "wallet_transactions", ["reference"], unique=True)
+    op.create_index("ix_wallet_transactions_booking_id", "wallet_transactions", ["booking_id"])
 
     op.create_table(
         "reports",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("booking_id", sa.Integer(), sa.ForeignKey("bookings.id")),
+        sa.Column("booking_id", sa.Integer(), sa.ForeignKey("bookings.id"), nullable=True),
         sa.Column("subject", sa.String(150), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("status", sa.String(30), nullable=False),
+        sa.Column("status", sa.String(30), nullable=False, server_default="open"),
         sa.Column("admin_response", sa.Text()),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("resolved_at", sa.DateTime()),
     )
     op.create_index("ix_reports_user_id", "reports", ["user_id"])
+    op.create_index("ix_reports_booking_id", "reports", ["booking_id"])
 
 
 def downgrade() -> None:
     op.drop_table("reports")
     op.drop_table("wallet_transactions")
     op.drop_table("wallets")
+    op.drop_table("booking_status_history")
     op.drop_table("bookings")
     op.drop_table("schedules")
     op.drop_table("trains")
