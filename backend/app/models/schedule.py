@@ -15,7 +15,7 @@ class Schedule(Base):
     destination_station_id: Mapped[int] = mapped_column(ForeignKey("stations.id"), nullable=False)
     departure_time: Mapped[time] = mapped_column(Time, nullable=False)
     arrival_time: Mapped[time] = mapped_column(Time, nullable=False)
-    operating_days: Mapped[str] = mapped_column(String(30), nullable=False, default="Mon,Tue,Wed,Thu,Fri,Sat,Sun")
+    operating_days: Mapped[str] = mapped_column(String(80), nullable=False, default="Mon,Tue,Wed,Thu,Fri,Sat,Sun")
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="active")
 
     train = relationship("Train")
