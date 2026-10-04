@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Train Booking System API", version="0.1.0")
+from .routes import auth_router, users_router
+
+app = FastAPI(title="Train Booking System API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -10,6 +12,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
+app.include_router(users_router)
 
 
 @app.get("/api/health")
