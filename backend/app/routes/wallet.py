@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from ..dependencies import DbSession, get_current_user
 from ..models import User, Wallet, WalletTransaction
@@ -51,7 +52,12 @@ def credit_wallet(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     wallet = get_or_create_wallet(db, current_user.id)
-    existing = db.scalar(select(WalletTransaction).where(WalletTransaction.reference == payload.idempotency_key))
+    existing = db.scalar(
+        select(WalletTransaction).where(
+            WalletTransaction.wallet_id == wallet.id,
+            WalletTransaction.reference == payload.idempotency_key,
+        )
+    )
     if existing:
         return existing
 
@@ -60,10 +66,22 @@ def credit_wallet(
         wallet_id=wallet.id,
         transaction_type="credit",
         amount=payload.amount,
-        reference=payload.idempotency_key,
+        reference=f"WAL-{token_hex(8).upper()}",
         description=payload.description,
     )
     db.add(transaction)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = db.scalar(
+            select(WalletTransaction).where(
+                WalletTransaction.wallet_id == wallet.id,
+                WalletTransaction.reference == payload.idempotency_key,
+            )
+        )
+        if existing:
+            return existing
+        raise HTTPException(status_code=409, detail="Wallet transaction could not be processed safely")
     db.refresh(transaction)
     return transaction
