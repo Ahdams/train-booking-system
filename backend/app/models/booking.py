@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -9,9 +9,6 @@ from ..database import Base
 
 class Booking(Base):
     __tablename__ = "bookings"
-    __table_args__ = (
-        UniqueConstraint("schedule_id", "travel_date", "seat_number", name="uq_booking_schedule_date_seat"),
-    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     booking_reference: Mapped[str] = mapped_column(String(30), unique=True, index=True, nullable=False)
