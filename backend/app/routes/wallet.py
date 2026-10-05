@@ -55,7 +55,7 @@ def credit_wallet(
     existing = db.scalar(
         select(WalletTransaction).where(
             WalletTransaction.wallet_id == wallet.id,
-            WalletTransaction.reference == payload.idempotency_key,
+            WalletTransaction.idempotency_key == payload.idempotency_key,
         )
     )
     if existing:
@@ -67,6 +67,7 @@ def credit_wallet(
         transaction_type="credit",
         amount=payload.amount,
         reference=f"WAL-{token_hex(8).upper()}",
+        idempotency_key=payload.idempotency_key,
         description=payload.description,
     )
     db.add(transaction)
@@ -77,7 +78,7 @@ def credit_wallet(
         existing = db.scalar(
             select(WalletTransaction).where(
                 WalletTransaction.wallet_id == wallet.id,
-                WalletTransaction.reference == payload.idempotency_key,
+                WalletTransaction.idempotency_key == payload.idempotency_key,
             )
         )
         if existing:
