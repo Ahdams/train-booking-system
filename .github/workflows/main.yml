@@ -48,10 +48,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Configure test environment
-        working-directory: backend
         run: |
           echo "DATABASE_URL=postgresql+psycopg://train_user:train_password@localhost:5432/train_booking_test" >> "$GITHUB_ENV"
           echo "SECRET_KEY=test-secret-key-for-ci" >> "$GITHUB_ENV"
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/backend" >> "$GITHUB_ENV"
 
       - name: Run database migrations
         working-directory: backend
@@ -61,7 +61,7 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: |
-          pytest -v
+          python -m pytest -v
 
       - name: Check Python imports
         working-directory: backend
