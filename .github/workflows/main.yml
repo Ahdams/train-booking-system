@@ -14,6 +14,11 @@ jobs:
   test:
     name: Backend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DATABASE_URL: postgresql+psycopg://train_user:train_password@localhost:5432/train_booking_test
+      SECRET_KEY: test-secret-key-for-ci
+      PYTHONPATH: ${{ github.workspace }}/backend
 
     services:
       postgres:
@@ -26,9 +31,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd="pg_isready -U train_user -d train_booking_test"
-          --health-interval=10s
+          --health-interval=5s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
 
     steps:
       - name: Checkout repository
@@ -47,21 +52,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Configure test environment
+      - name: Verify Python and environment
+        working-directory: backend
         run: |
-          echo "DATABASE_URL=postgresql+psycopg://train_user:train_password@localhost:5432/train_booking_test" >> "$GITHUB_ENV"
-          echo "SECRET_KEY=test-secret-key-for-ci" >> "$GITHUB_ENV"
-          echo "PYTHONPATH=$GITHUB_WORKSPACE/backend" >> "$GITHUB_ENV"
+          python --version
+          python -c "import sys; print(sys.path)"
+          python -c "import fastapi, sqlalchemy, psycopg, pytest; print('Dependencies imported successfully')"
 
       - name: Run database migrations
         working-directory: backend
-        run: |
-          alembic upgrade head
+        run: timeout 120s alembic upgrade head
 
       - name: Run tests
         working-directory: backend
-        run: |
-          python -m pytest -v
+        run: timeout 120s python -m pytest -v -s
 
       - name: Check Python imports
         working-directory: backend
