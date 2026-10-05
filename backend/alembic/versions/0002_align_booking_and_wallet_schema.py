@@ -1,4 +1,4 @@
-"""align booking status history and wallet schema
+"""align booking and wallet indexes with the initial schema
 
 Revision ID: 0002_align_booking_and_wallet_schema
 Revises: 0001_initial_schema
@@ -13,14 +13,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Align the database with the BookingStatusHistory ORM model.
-    op.add_column("booking_status_history", sa.Column("old_status", sa.String(30), nullable=True))
-    op.alter_column("booking_status_history", "status", new_column_name="new_status")
-
-    # 0001 already creates wallet_transactions.booking_id and its index.
-    # No duplicate column/index should be created here.
-
-    # A cancelled booking must release its seat so it can be booked again.
+    # The initial schema already contains the current booking-status-history
+    # columns and wallet fields. This migration only changes the seat index so
+    # cancelled bookings release their seats.
     op.drop_index("uq_booking_seat_per_service_date", table_name="bookings")
     op.create_index(
         "uq_active_booking_seat_per_service_date",
@@ -39,5 +34,3 @@ def downgrade() -> None:
         ["schedule_id", "travel_date", "seat_number"],
         unique=True,
     )
-    op.alter_column("booking_status_history", "new_status", new_column_name="status")
-    op.drop_column("booking_status_history", "old_status")
