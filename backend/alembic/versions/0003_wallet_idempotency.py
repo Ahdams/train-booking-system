@@ -1,11 +1,11 @@
 """finalize wallet idempotency schema
 
 Revision ID: 0003_wallet_idempotency
-Revises: 0002_align_booking_and_wallet_schema
+Revises: 0002_wallet_seat_index
 """
 
 revision = "0003_wallet_idempotency"
-down_revision = "0002_align_booking_and_wallet_schema"
+down_revision = "0002_wallet_seat_index"
 branch_labels = None
 depends_on = None
 
