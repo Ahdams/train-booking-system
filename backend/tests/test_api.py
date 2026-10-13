@@ -129,3 +129,28 @@ def test_wallet_credit_idempotency_returns_existing_transaction():
     wallet = client.get("/api/wallet", headers=auth(token))
     assert wallet.status_code == 200
     assert str(wallet.json()["balance"]) == "7.25"
+
+
+def test_non_admin_cannot_list_all_reports():
+    token, _ = register_user()
+    response = client.get("/api/reports", headers=auth(token))
+    assert response.status_code == 403
+
+
+def test_non_admin_cannot_resolve_a_report():
+    token, _ = register_user()
+    response = client.patch(
+        "/api/reports/999999/resolve",
+        headers=auth(token),
+        json={"admin_response": "Reviewed by admin"},
+    )
+    assert response.status_code == 403
+
+
+def test_train_search_rejects_same_origin_and_destination():
+    response = client.get(
+        "/api/trains/search",
+        params={"origin_station_id": 1, "destination_station_id": 1},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Origin and destination must be different"
