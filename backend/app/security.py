@@ -1,19 +1,28 @@
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from .config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+MAX_BCRYPT_PASSWORD_BYTES = 72
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > MAX_BCRYPT_PASSWORD_BYTES:
+        raise ValueError("Password must not exceed 72 UTF-8 bytes")
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt(rounds=12)).decode("ascii")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > MAX_BCRYPT_PASSWORD_BYTES:
+        return False
+    try:
+        return bcrypt.checkpw(password_bytes, password_hash.encode("ascii"))
+    except (ValueError, UnicodeEncodeError):
+        return False
 
 
 def create_access_token(subject: str, is_admin: bool = False) -> str:
