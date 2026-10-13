@@ -1,4 +1,5 @@
 from datetime import date, time
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -13,6 +14,7 @@ class ScheduleCreate(BaseModel):
     departure_time: time
     arrival_time: time
     operating_days: list[str] = Field(min_length=1)
+    fare: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     status: str = "active"
 
     @field_validator("operating_days")
@@ -33,6 +35,7 @@ class ScheduleResponse(BaseModel):
     arrival_time: time
     operating_days: list[str]
     status: str
+    fare: Decimal | None = None
 
 
 class TrainCreate(BaseModel):
@@ -74,4 +77,5 @@ class TrainSearchResponse(BaseModel):
     arrival_time: time
     operating_days: list[str]
     available_seats: int
+    fare: Decimal | None = None
     travel_date: date | None = None
