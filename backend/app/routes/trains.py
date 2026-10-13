@@ -38,7 +38,7 @@ def create_train(payload: TrainCreate, db: DbSession, _: Annotated[User, Depends
     return train
 
 def serialize_schedule(schedule: Schedule) -> ScheduleResponse:
-    return ScheduleResponse(id=schedule.id, train_id=schedule.train_id, origin_station_id=schedule.origin_station_id, destination_station_id=schedule.destination_station_id, departure_time=schedule.departure_time, arrival_time=schedule.arrival_time, operating_days=[d for d in schedule.operating_days.split(",") if d], status=schedule.status)
+    return ScheduleResponse(id=schedule.id, train_id=schedule.train_id, origin_station_id=schedule.origin_station_id, destination_station_id=schedule.destination_station_id, departure_time=schedule.departure_time, arrival_time=schedule.arrival_time, operating_days=[d for d in schedule.operating_days.split(",") if d], status=schedule.status, fare=schedule.fare)
 
 @router.post("/schedules", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
 def create_schedule(payload: ScheduleCreate, db: DbSession, _: Annotated[User, Depends(require_admin)]):
@@ -47,7 +47,7 @@ def create_schedule(payload: ScheduleCreate, db: DbSession, _: Annotated[User, D
     if not origin or not destination or not origin.is_active or not destination.is_active: raise HTTPException(status_code=404, detail="Station not found")
     if origin.id == destination.id: raise HTTPException(status_code=400, detail="Origin and destination must be different")
     if payload.arrival_time <= payload.departure_time: raise HTTPException(status_code=400, detail="Arrival time must be later than departure time")
-    schedule = Schedule(train_id=payload.train_id, origin_station_id=payload.origin_station_id, destination_station_id=payload.destination_station_id, departure_time=payload.departure_time, arrival_time=payload.arrival_time, operating_days=",".join(payload.operating_days), status=payload.status)
+    schedule = Schedule(train_id=payload.train_id, origin_station_id=payload.origin_station_id, destination_station_id=payload.destination_station_id, departure_time=payload.departure_time, arrival_time=payload.arrival_time, operating_days=",".join(payload.operating_days), status=payload.status, fare=payload.fare)
     db.add(schedule); db.commit(); db.refresh(schedule)
     return serialize_schedule(schedule)
 
@@ -72,5 +72,5 @@ def search_trains(db: DbSession, origin_station_id: int = Query(...), destinatio
         if travel_date:
             booked = db.scalar(select(func.count(Booking.id)).where(Booking.schedule_id == schedule.id, Booking.travel_date == travel_date, Booking.status == "confirmed")) or 0
             available = max(0, train.total_seats - booked)
-        results.append(TrainSearchResponse(schedule_id=schedule.id, train_id=train.id, train_name=train.name, train_number=train.train_number, origin_station_id=origin_station.id, origin_station=origin_station.name, destination_station_id=destination_station.id, destination_station=destination_station.name, departure_time=schedule.departure_time, arrival_time=schedule.arrival_time, operating_days=[d for d in schedule.operating_days.split(",") if d], available_seats=available, travel_date=travel_date))
+        results.append(TrainSearchResponse(schedule_id=schedule.id, train_id=train.id, train_name=train.name, train_number=train.train_number, origin_station_id=origin_station.id, origin_station=origin_station.name, destination_station_id=destination_station.id, destination_station=destination_station.name, departure_time=schedule.departure_time, arrival_time=schedule.arrival_time, operating_days=[d for d in schedule.operating_days.split(",") if d], available_seats=available, travel_date=travel_date, fare=schedule.fare))
     return results
