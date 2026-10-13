@@ -154,3 +154,30 @@ def test_train_search_rejects_same_origin_and_destination():
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Origin and destination must be different"
+
+
+def test_booking_requires_authentication():
+    response = client.post("/api/bookings", json={
+        "schedule_id": 1, "travel_date": "2099-01-01", "seat_number": "1"
+    })
+    assert response.status_code == 401
+
+
+def test_schedule_creation_requires_admin():
+    token, _ = register_user()
+    response = client.post("/api/schedules", headers=auth(token), json={
+        "train_id": 1, "origin_station_id": 1, "destination_station_id": 2,
+        "departure_time": "09:00:00", "arrival_time": "10:00:00",
+        "operating_days": ["Mon"], "fare": "5000.00"
+    })
+    assert response.status_code == 403
+
+
+def test_schedule_fare_must_be_positive():
+    token, _ = register_user()
+    response = client.post("/api/schedules", headers=auth(token), json={
+        "train_id": 1, "origin_station_id": 1, "destination_station_id": 2,
+        "departure_time": "09:00:00", "arrival_time": "10:00:00",
+        "operating_days": ["Mon"], "fare": "-100.00"
+    })
+    assert response.status_code == 422
