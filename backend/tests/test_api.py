@@ -3,9 +3,15 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def enable_test_wallet_funding(monkeypatch):
+    monkeypatch.setattr(settings, "enable_dev_wallet_credit", True)
 
 
 def unique_email() -> str:
@@ -317,3 +323,47 @@ def test_booking_payment_is_private_to_passenger():
     booking_id = booked.json()["id"]
     assert client.get(f"/api/bookings/{booking_id}", headers=auth(other_token)).status_code == 403
     assert all(t["booking_id"] != booking_id for t in client.get("/api/wallet/transactions", headers=auth(other_token)).json())
+
+
+def test_development_wallet_credit_is_disabled_by_default(monkeypatch):
+    token, _ = register_user()
+    monkeypatch.setattr(settings, "enable_dev_wallet_credit", False)
+    response = client.post("/api/wallet/credit", headers=auth(token), json={
+        "amount": "1000.00",
+        "idempotency_key": f"ci-{uuid.uuid4().hex}",
+        "description": "Must not be credited",
+    })
+    assert response.status_code == 403
+    assert str(client.get("/api/wallet", headers=auth(token)).json()["balance"]) == "0.00"
+
+
+def test_simultaneous_booking_requests_only_charge_one_passenger():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    schedule_id, travel_date = setup_paid_schedule()
+    first_token, _ = register_user()
+    second_token, _ = register_user()
+    fund_wallet(first_token, "5000.00")
+    fund_wallet(second_token, "5000.00")
+    payload = {"schedule_id": schedule_id, "travel_date": travel_date, "seat_number": "3"}
+    barrier = Barrier(2)
+
+    def attempt(token):
+        barrier.wait(timeout=10)
+        with TestClient(app) as concurrent_client:
+            return concurrent_client.post("/api/bookings", headers=auth(token), json=payload)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(attempt, token) for token in (first_token, second_token)]
+        results = [future.result(timeout=20) for future in futures]
+
+    assert sorted(response.status_code for response in results) == [201, 409], [
+        (response.status_code, response.text) for response in results
+    ]
+    balances = [
+        str(client.get("/api/wallet", headers=auth(token)).json()["balance"])
+        for token in (first_token, second_token)
+    ]
+    assert sorted(balances) == ["0.00", "5000.00"]
+    assert sum(len(client.get("/api/bookings/mine", headers=auth(token)).json()) for token in (first_token, second_token)) == 1
