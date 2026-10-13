@@ -174,10 +174,15 @@ def test_schedule_creation_requires_admin():
 
 
 def test_schedule_fare_must_be_positive():
-    token, _ = register_user()
-    response = client.post("/api/schedules", headers=auth(token), json={
+    from pydantic import ValidationError
+    from app.schemas.schedule import ScheduleCreate, ScheduleFareUpdate
+
+    payload = {
         "train_id": 1, "origin_station_id": 1, "destination_station_id": 2,
         "departure_time": "09:00:00", "arrival_time": "10:00:00",
         "operating_days": ["Mon"], "fare": "-100.00"
-    })
-    assert response.status_code == 422
+    }
+    with pytest.raises(ValidationError):
+        ScheduleCreate.model_validate(payload)
+    with pytest.raises(ValidationError):
+        ScheduleFareUpdate.model_validate({"fare": "-100.00"})
