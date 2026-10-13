@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from ..config import settings
 from ..dependencies import DbSession, get_current_user
 from ..models import User, Wallet, WalletTransaction
 from ..schemas.wallet import WalletCreditRequest, WalletResponse, WalletTransactionResponse
@@ -51,6 +52,9 @@ def credit_wallet(
     db: DbSession,
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    if not settings.enable_dev_wallet_credit:
+        raise HTTPException(status_code=403, detail="Development wallet credits are disabled")
+
     wallet = get_or_create_wallet(db, current_user.id)
     existing = db.scalar(
         select(WalletTransaction).where(
