@@ -7,7 +7,7 @@ from sqlalchemy.orm import aliased
 
 from ..dependencies import DbSession, require_admin
 from ..models import Booking, Schedule, Station, Train, User
-from ..schemas.schedule import ScheduleCreate, ScheduleResponse, StationCreate, StationResponse, TrainCreate, TrainResponse, TrainSearchResponse
+from ..schemas.schedule import ScheduleCreate, ScheduleFareUpdate, ScheduleResponse, StationCreate, StationResponse, TrainCreate, TrainResponse, TrainSearchResponse
 
 router = APIRouter(prefix="/api", tags=["Trains & Schedules"])
 
@@ -74,3 +74,14 @@ def search_trains(db: DbSession, origin_station_id: int = Query(...), destinatio
             available = max(0, train.total_seats - booked)
         results.append(TrainSearchResponse(schedule_id=schedule.id, train_id=train.id, train_name=train.name, train_number=train.train_number, origin_station_id=origin_station.id, origin_station=origin_station.name, destination_station_id=destination_station.id, destination_station=destination_station.name, departure_time=schedule.departure_time, arrival_time=schedule.arrival_time, operating_days=[d for d in schedule.operating_days.split(",") if d], available_seats=available, travel_date=travel_date, fare=schedule.fare))
     return results
+
+
+@router.patch("/schedules/{schedule_id}/fare", response_model=ScheduleResponse)
+def update_schedule_fare(schedule_id: int, payload: ScheduleFareUpdate, db: DbSession, _: Annotated[User, Depends(require_admin)]):
+    schedule = db.scalar(select(Schedule).where(Schedule.id == schedule_id).with_for_update())
+    if schedule is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    schedule.fare = payload.fare
+    db.commit()
+    db.refresh(schedule)
+    return serialize_schedule(schedule)
