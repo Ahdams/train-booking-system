@@ -79,3 +79,7 @@ class TrainSearchResponse(BaseModel):
     available_seats: int
     fare: Decimal | None = None
     travel_date: date | None = None
+
+
+class ScheduleFareUpdate(BaseModel):
+    fare: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
