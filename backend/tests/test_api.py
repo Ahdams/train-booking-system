@@ -1,7 +1,7 @@
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 
 from app.config import settings
 from app.main import app
