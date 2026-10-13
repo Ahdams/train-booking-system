@@ -9,7 +9,7 @@ client = TestClient(app)
 
 
 def unique_email() -> str:
-    return f"ci-{uuid.uuid4().hex}@example.test"
+    return f"ci-{uuid.uuid4().hex}@example.com"
 
 
 def register_user(email: str | None = None) -> tuple[str, str]:
