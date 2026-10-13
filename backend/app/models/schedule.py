@@ -1,6 +1,8 @@
 from datetime import time
 
-from sqlalchemy import ForeignKey, String, Time
+from decimal import Decimal
+
+from sqlalchemy import ForeignKey, Numeric, String, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -16,6 +18,7 @@ class Schedule(Base):
     departure_time: Mapped[time] = mapped_column(Time, nullable=False)
     arrival_time: Mapped[time] = mapped_column(Time, nullable=False)
     operating_days: Mapped[str] = mapped_column(String(80), nullable=False, default="Mon,Tue,Wed,Thu,Fri,Sat,Sun")
+    fare: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="active")
 
     train = relationship("Train")
