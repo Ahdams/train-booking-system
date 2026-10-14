@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from ..dependencies import DbSession, get_current_user, require_admin
 from ..models import Booking, BookingStatusHistory, Schedule, Train, User, Wallet, WalletTransaction
 from ..schemas.booking import BookingCreate, BookingResponse, BookingStatusUpdate
+from ..seat_numbers import normalize_seat_number
 
 router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
 
@@ -48,10 +49,7 @@ def create_booking(
     if schedule.fare is None or schedule.fare <= 0:
         raise HTTPException(status_code=409, detail="Ticket fare has not been configured")
 
-    seat = payload.seat_number.strip().upper()
-    if not seat.isdigit() or not 1 <= int(seat) <= train.total_seats:
-        raise HTTPException(status_code=400, detail="Seat number must be within the train capacity")
-    seat = str(int(seat))
+    seat = normalize_seat_number(payload.seat_number, train.total_seats)
     booked = db.scalar(
         select(func.count(Booking.id)).where(
             Booking.schedule_id == schedule.id,
